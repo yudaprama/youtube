@@ -1,3 +1,3 @@
-module yudaprama/youtube_video_info
+module yudaprama/youtube
 
 go 1.14
