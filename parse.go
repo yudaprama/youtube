@@ -9,75 +9,71 @@ import (
 	"strings"
 )
 
-func (y *Youtube) parseDecipherOpsAndArgs() (operations []string, args []int, err error) {
+func (y *Youtube) parseChiper() (operations []string, args []int, err error) {
 	/// get whole page
 	client := y.getHTTPClient()
 	if y.VideoID == "" {
 		return nil, nil, fmt.Errorf("video id is empty , err=%s", err)
 	}
 	embedUrl := fmt.Sprintf("https://youtube.com/embed/%s?hl=en", y.VideoID)
-
 	embeddedPageResp, err := client.Get(embedUrl)
 	if err != nil {
 		return nil, nil, err
 	}
 	defer embeddedPageResp.Body.Close()
-
 	if embeddedPageResp.StatusCode != 200 {
 		return nil, nil, err
 	}
-
 	embeddedPageBodyBytes, err := ioutil.ReadAll(embeddedPageResp.Body)
 	if err != nil {
 		return nil, nil, err
 	}
 	embeddedPage := string(embeddedPageBodyBytes)
-
 	playerConfigPattern := regexp.MustCompile("yt\\.setConfig\\({'PLAYER_CONFIG':(.*)}\\);")
 	playerConfig := playerConfigPattern.FindString(embeddedPage)
-
-	basejsPattern := regexp.MustCompile(`"js":"\\/s\\/player(.*)base\.js`)
+	// get base js pattern
+	jsPattern := regexp.MustCompile(`"js":"\\/s\\/player(.*)base\.js`)
 	//eg: "js":\"\/s\/player\/f676c671\/player_ias.vflset\/en_US\/base.js
-	escapedBasejsUrl := basejsPattern.FindString(playerConfig)
+	escapedJSUrl := jsPattern.FindString(playerConfig)
 	//eg: ["js", "\/s\/player\/f676c671\/player_ias.vflset\/en_US\/base.js]
-	arr := strings.Split(escapedBasejsUrl, ":\"")
-	basejsUrl := "https://youtube.com" + strings.ReplaceAll(arr[len(arr)-1], "\\", "")
-	basejsUrlResp, err := client.Get(basejsUrl)
+	arr := strings.Split(escapedJSUrl, ":\"")
+	baseUrl := "https://youtube.com" + strings.ReplaceAll(arr[len(arr)-1], "\\", "")
+	baseUrlResp, err := client.Get(baseUrl)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	defer basejsUrlResp.Body.Close()
-	if basejsUrlResp.StatusCode != 200 {
+	defer baseUrlResp.Body.Close()
+	if baseUrlResp.StatusCode != 200 {
 		return nil, nil, err
 	}
 
-	basejsBodyBytes, err := ioutil.ReadAll(basejsUrlResp.Body)
+	jsBodyBytes, err := ioutil.ReadAll(baseUrlResp.Body)
 	if err != nil {
 		return nil, nil, err
 	}
-	basejs := string(basejsBodyBytes)
+	baseJS := string(jsBodyBytes)
 
 	// regex to get name of decipher function
 	decipherFuncNamePattern := regexp.MustCompile(`(\w+)=function\(\w+\){(\w+)=(\w+)\.split\(\x22{2}\);.*?return\s+(\w+)\.join\(\x22{2}\)}`)
 
 	// Ft=function(a){a=a.split("");Et.vw(a,2);Et.Zm(a,4);Et.Zm(a,46);Et.vw(a,2);Et.Zm(a,34);Et.Zm(a,59);Et.cn(a,42);return a.join("")} => get Ft
-	arr = decipherFuncNamePattern.FindStringSubmatch(basejs)
+	arr = decipherFuncNamePattern.FindStringSubmatch(baseJS)
 	funcName := arr[1]
-	decipherFuncBodyPattern := regexp.MustCompile(fmt.Sprintf(`[^h\.]%s=function\(\w+\)\{(.*?)\}`, funcName))
+	decipherFuncBodyReg := regexp.MustCompile(fmt.Sprintf(`[^h\.]%s=function\(\w+\)\{(.*?)\}`, funcName))
 
 	// eg: get a=a.split("");Et.vw(a,2);Et.Zm(a,4);Et.Zm(a,46);Et.vw(a,2);Et.Zm(a,34);Et.Zm(a,59);Et.cn(a,42);return a.join("")
-	arr = decipherFuncBodyPattern.FindStringSubmatch(basejs)
+	arr = decipherFuncBodyReg.FindStringSubmatch(baseJS)
 	decipherFuncBody := arr[1]
 
 	// FuncName in Body => get Et
-	funcNameInBodyRegex := regexp.MustCompile(`(\w+).\w+\(\w+,\d+\);`)
-	arr = funcNameInBodyRegex.FindStringSubmatch(decipherFuncBody)
+	bodyRegex := regexp.MustCompile(`(\w+).\w+\(\w+,\d+\);`)
+	arr = bodyRegex.FindStringSubmatch(decipherFuncBody)
 	funcNameInBody := arr[1]
-	decipherDefBodyRegex := regexp.MustCompile(fmt.Sprintf(`var\s+%s=\{(\w+:function\(\w+(,\w+)?\)\{(.*?)\}),?\};`, funcNameInBody))
+	decipherBodyRegex := regexp.MustCompile(fmt.Sprintf(`var\s+%s=\{(\w+:function\(\w+(,\w+)?\)\{(.*?)\}),?\};`, funcNameInBody))
 	re := regexp.MustCompile(`\r?\n`)
-	basejs = re.ReplaceAllString(basejs, "")
-	arr1 := decipherDefBodyRegex.FindStringSubmatch(basejs)
+	baseJS = re.ReplaceAllString(baseJS, "")
+	arr1 := decipherBodyRegex.FindStringSubmatch(baseJS)
 
 	// eg:  vw:function(a,b){a.splice(0,b)},cn:function(a){a.reverse()},Zm:function(a,b){var c=a[0];a[0]=a[b%a.length];a[b%a.length]=c}
 	decipherDefBody := arr1[1]
@@ -186,11 +182,11 @@ func (y *Youtube) decipher(cipher string) (string, error) {
 			r--
 		}
 	}
-	operations, args, err := y.parseDecipherOpsAndArgs()
+	ops, args, err := y.parseChiper()
 	if err != nil {
 		return "", err
 	}
-	for i, op := range operations {
+	for i, op := range ops {
 		switch op {
 		case "splice":
 			splice(args[i])
