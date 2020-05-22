@@ -115,7 +115,7 @@ func (y *Youtube) parseVideoInfo() error {
 }
 
 // setup http client
-func (y *Youtube) getHTTPClient() *http.Client {
+func GetHTTPClient() *http.Client {
 	httpTransport := &http.Transport{
 		DialContext: (&net.Dialer{
 			Timeout:   30 * time.Second,
@@ -132,7 +132,7 @@ func (y *Youtube) getHTTPClient() *http.Client {
 func (y *Youtube) getVideoInfo() error {
 	id := "https://youtube.googleapis.com/v/" + y.VideoID
 	u := "https://youtube.com/get_video_info?video_id=" + y.VideoID + "&eurl=" + id
-	httpClient := y.getHTTPClient()
+	httpClient := GetHTTPClient()
 	resp, err := httpClient.Get(u)
 	if err != nil {
 		return err
