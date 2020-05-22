@@ -11,7 +11,7 @@ import (
 
 func (y *Youtube) parseChiper() (operations []string, args []int, err error) {
 	/// get whole page
-	client := y.getHTTPClient()
+	client := GetHTTPClient()
 	if y.VideoID == "" {
 		return nil, nil, fmt.Errorf("video id is empty , err=%s", err)
 	}
