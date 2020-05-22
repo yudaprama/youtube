@@ -15,9 +15,10 @@ func (r *Videos) Marshal() ([]byte, error) {
 }
 
 type Video struct {
-	Author  string `json:"author"`
-	Quality string `json:"quality"`
-	Title   string `json:"title"`
-	Type    string `json:"type"`
-	URL     string `json:"url"`
+	Author   string `json:"author"`
+	Quality  string `json:"quality"`
+	Title    string `json:"title"`
+	Type     string `json:"type"`
+	URL      string `json:"url"`
+	Duration string `json:"duration"`
 }

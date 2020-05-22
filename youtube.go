@@ -99,11 +99,12 @@ func (y *Youtube) parseVideoInfo() error {
 			streamUrl = decipheredUrl
 		}
 		videos = append(videos, Video{
-			Author:  author,
-			Quality: streamRaw.Quality,
-			Title:   title,
-			Type:    streamRaw.MimeType,
-			URL:     streamUrl,
+			Author:   author,
+			Quality:  streamRaw.Quality,
+			Title:    title,
+			Type:     streamRaw.MimeType,
+			URL:      streamUrl,
+			Duration: streamRaw.ApproxDurationMs,
 		})
 	}
 	y.Videos = videos
